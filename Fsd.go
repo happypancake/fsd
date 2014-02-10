@@ -98,10 +98,14 @@ func TimerL(name string, value float64, rate float64) {
 	send(payload)
 }
 
-func Time(name string, rate float64, lambda func()) {
+func Time(name string, lambda func()) {
+	TimeL(name, 1.0, lambda)
+}
+
+func TimeL(name string, rate float64, lambda func()) {
 	start := time.Now()
 	lambda()
-	Timer(name, float64(time.Now().Sub(start).Nanoseconds()/1000000), rate)
+	TimerL(name, float64(time.Now().Sub(start).Nanoseconds()/1000000), rate)
 }
 
 // Track a unique visitor id to the site.
