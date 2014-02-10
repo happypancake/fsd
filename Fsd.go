@@ -55,7 +55,11 @@ func (fsd *Fsd) processOutgoing() {
 
 // Increment the page.views counter.
 // page.views:1|c
-func Count(name string, value float64, rate float64) {
+func Count(name string, value float64) {
+	CountL(name, value, 1.0)
+}
+
+func CountL(name string, value float64, rate float64) {
 	payload := createPayload(name, value) + "|c"
 
 	suffix, err := rateCheck(rate)
@@ -78,7 +82,11 @@ func Gauge(name string, value float64) {
 // request.latency:320|ms
 // Or a payload of a image
 // image.size:2.3|ms
-func Timer(name string, value float64, rate float64) {
+func Timer(name string, value float64) {
+	TimerL(name, value, 1.0)
+}
+
+func TimerL(name string, value float64, rate float64) {
 	payload := createPayload(name, value) + "|ms"
 
 	suffix, err := rateCheck(rate)
