@@ -1,5 +1,3 @@
-// Copyright 2014 HappyPancake AB
-
 package fsd
 
 import (
@@ -21,10 +19,10 @@ type Fsd struct {
 }
 
 func init() {
-	start("127.0.0.1:8125")
+	Start("127.0.0.1:8125")
 }
 
-func start(address string) {
+func Start(address string) {
 	Instance = &Fsd{address: address, outgoing: make(chan string, 100000)}
 	Instance.connect()
 
