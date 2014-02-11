@@ -148,13 +148,13 @@ func rateCheck(rate float64) (suffix string, err error) {
 func send(payload string) {
 	length := float64(len(Instance.outgoing))
 	capacity := float64(cap(Instance.outgoing))
-
-	Gauge("fsd.buffer.fillrate", capacity/length)
+	// commented out, since this causes a recursion
+	//Gauge("fsd.buffer.fillrate", capacity/length)
 
 	if length < capacity*0.9 {
 		Instance.outgoing <- payload
-		CountL("fsd.buffer.success", 1, 0.1)
+		//CountL("fsd.buffer.success", 1, 0.1)
 	} else {
-		CountL("fsd.buffer.failure", 1, 0.1)
+		//CountL("fsd.buffer.failure", 1, 0.1)
 	}
 }
