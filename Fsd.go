@@ -101,6 +101,16 @@ func TimerL(name string, milliseconds float64, rate float64) {
 	send(payload)
 }
 
+// TimeSince records a named timer with the duration since start
+func TimeSince(name string, start time.Time) {
+	TimeSinceL(name, start, 1.0)
+}
+
+// TimeSince records a rated and named timer with the duration since start
+func TimeSinceL(name string, start time.Time, rate float64) {
+	TimerL(name, rate, float64(time.Now().Sub(start).Nanoseconds()/1000000))
+}
+
 func Time(name string, lambda func()) {
 	TimeL(name, 1.0, lambda)
 }
