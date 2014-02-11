@@ -44,7 +44,10 @@ func (fsd *Fsd) processOutgoing() {
 		data := fmt.Sprintf("%s", outgoing)
 
 		if _, err := fsd.conn.Write([]byte(data)); err != nil {
+			Count("fsd.sending.failure", 1)
 			fsd.connect()
+		} else {
+			CountL("fsd.sending.sucess", 1, 0.1)
 		}
 	}
 }
@@ -133,7 +136,15 @@ func rateCheck(rate float64) (suffix string, err error) {
 }
 
 func send(payload string) {
-	if float64(len(Instance.outgoing)) < float64(cap(Instance.outgoing))*0.9 {
+	length := float64(len(Instance.outgoing))
+	capacity := float64(cap(Instance.outgoing))
+
+	Gauge("fsd.buffer.fillrate", capacity/length)
+
+	if length < capacity*0.9 {
 		Instance.outgoing <- payload
+		CountL("fsd.buffer.success", 1, 0.1)
+	} else {
+		CountL("fsd.buffer.failure", 1, 0.1)
 	}
 }
