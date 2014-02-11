@@ -41,13 +41,8 @@ func (fsd *Fsd) connect() error {
 
 func (fsd *Fsd) processOutgoing() {
 	for outgoing := range fsd.outgoing {
-		data := fmt.Sprintf("%s", outgoing)
-
-		if _, err := fsd.conn.Write([]byte(data)); err != nil {
-			Count("fsd.sending.failure", 1)
+		if _, err := fsd.conn.Write([]byte(outgoing)); err != nil {
 			fsd.connect()
-		} else {
-			CountL("fsd.sending.sucess", 1, 0.1)
 		}
 	}
 }
@@ -63,21 +58,18 @@ func Count(name string, value float64) {
 }
 
 func CountL(name string, value float64, rate float64) {
-	payload := createPayload(name, value) + "|c"
-
-	suffix, err := rateCheck(rate)
+	payload, err := rateCheck(rate, createPayload(name, value, "c"))
 	if err != nil {
 		return
 	}
 
-	payload = payload + suffix
 	send(payload)
 }
 
 // Record the fuel tank is half-empty
 // fuel.level:0.5|g
 func Gauge(name string, value float64) {
-	payload := createPayload(name, value) + "|g"
+	payload := createPayload(name, value, "g")
 	send(payload)
 }
 
@@ -85,19 +77,24 @@ func Gauge(name string, value float64) {
 // request.latency:320|ms
 // Or a payload of a image
 // image.size:2.3|ms
-func Timer(name string, milliseconds float64) {
-	TimerL(name, milliseconds, 1.0)
+func Timer(name string, duration time.Duration) {
+	TimerL(name, duration, 1.0)
 }
 
-func TimerL(name string, milliseconds float64, rate float64) {
-	payload := createPayload(name, milliseconds) + "|ms"
+func TimerL(name string, duration time.Duration, rate float64) {
+	HistogramL(name, float64(duration.Nanoseconds()/1000000), rate)
+}
 
-	suffix, err := rateCheck(rate)
+func Histogram(name string, value float64) {
+	HistogramL(name, value, 1.0)
+}
+
+func HistogramL(name string, value float64, rate float64) {
+	payload, err := rateCheck(rate, createPayload(name, value, "ms"))
 	if err != nil {
 		return
 	}
 
-	payload = payload + suffix
 	send(payload)
 }
 
@@ -108,7 +105,7 @@ func TimeSince(name string, start time.Time) {
 
 // TimeSince records a rated and named timer with the duration since start
 func TimeSinceL(name string, start time.Time, rate float64) {
-	TimerL(name, float64(time.Now().Sub(start).Nanoseconds()/1000000), rate)
+	TimerL(name, time.Now().Sub(start), rate)
 }
 
 func Time(name string, lambda func()) {
@@ -118,28 +115,27 @@ func Time(name string, lambda func()) {
 func TimeL(name string, rate float64, lambda func()) {
 	start := time.Now()
 	lambda()
-	TimerL(name, float64(time.Now().Sub(start).Nanoseconds()/1000000), rate)
+	TimeSinceL(name, start, rate)
 }
 
 // Track a unique visitor id to the site.
 // users.uniques:1234|s
 func Set(name string, value float64) {
-	payload := createPayload(name, value) + "|s"
+	payload := createPayload(name, value, "s")
 	send(payload)
 }
 
-func createPayload(name string, value float64) (payload string) {
-	payload = fmt.Sprintf("%s:%f", name, value)
-	return payload
+func createPayload(name string, value float64, suffix string) string {
+	return fmt.Sprintf("%s:%f|%s", name, value, suffix)
 }
 
-func rateCheck(rate float64) (suffix string, err error) {
+func rateCheck(rate float64, payload string) (string, error) {
 	if rate < 1 {
 		if rand.Float64() < rate {
-			return fmt.Sprintf("|@%f", rate), nil
+			return payload + fmt.Sprintf("|@%f", rate), nil
 		}
-	} else {
-		return "", nil
+	} else { // rate is 1.0 == all samples should be sent
+		return payload, nil
 	}
 
 	return "", errors.New("Out of rate limit")
@@ -148,13 +144,8 @@ func rateCheck(rate float64) (suffix string, err error) {
 func send(payload string) {
 	length := float64(len(Instance.outgoing))
 	capacity := float64(cap(Instance.outgoing))
-	// commented out, since this causes a recursion
-	//Gauge("fsd.buffer.fillrate", capacity/length)
 
 	if length < capacity*0.9 {
 		Instance.outgoing <- payload
-		CountL("fsd.buffer.success", 1, 0.1)
-	} else {
-		CountL("fsd.buffer.failure", 1, 0.1)
 	}
 }
