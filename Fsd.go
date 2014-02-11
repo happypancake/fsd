@@ -108,7 +108,7 @@ func TimeSince(name string, start time.Time) {
 
 // TimeSince records a rated and named timer with the duration since start
 func TimeSinceL(name string, start time.Time, rate float64) {
-	TimerL(name, rate, float64(time.Now().Sub(start).Nanoseconds()/1000000))
+	TimerL(name, float64(time.Now().Sub(start).Nanoseconds()/1000000), rate)
 }
 
 func Time(name string, lambda func()) {
