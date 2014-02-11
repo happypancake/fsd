@@ -85,12 +85,12 @@ func Gauge(name string, value float64) {
 // request.latency:320|ms
 // Or a payload of a image
 // image.size:2.3|ms
-func Timer(name string, value float64) {
-	TimerL(name, value, 1.0)
+func Timer(name string, milliseconds float64) {
+	TimerL(name, milliseconds, 1.0)
 }
 
-func TimerL(name string, value float64, rate float64) {
-	payload := createPayload(name, value) + "|ms"
+func TimerL(name string, milliseconds float64, rate float64) {
+	payload := createPayload(name, milliseconds) + "|ms"
 
 	suffix, err := rateCheck(rate)
 	if err != nil {
