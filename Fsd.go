@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -126,7 +127,9 @@ func Set(name string, value float64) {
 }
 
 func createPayload(name string, value float64, suffix string) string {
-	return fmt.Sprintf("%s:%f|%s", name, value, suffix)
+	// we spend a lot of time in this code
+	return name + ":" + strconv.FormatFloat(value, 'f', -1, 64) + "|" + suffix
+	//return fmt.Sprintf("%s:%f|%s", name, value, suffix)
 }
 
 func rateCheck(rate float64, payload string) (string, error) {
