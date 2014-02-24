@@ -1,7 +1,10 @@
+// Package fsd is a client library for accessing StatsD daemon. You can specify
+// custom StatsD port via statsd flag
 package fsd
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -11,27 +14,27 @@ import (
 
 var (
 	Instance *Fsd
+	address  *string = flag.String("statsd", "127.0.0.1:8125", "UDP endpoint for StatsD daemon")
 )
 
 type Fsd struct {
 	outgoing chan string
-	address  string
 	conn     net.Conn
 }
 
 func init() {
-	Start("127.0.0.1:8125")
+	start()
 }
 
-func Start(address string) {
-	Instance = &Fsd{address: address, outgoing: make(chan string, 100000)}
+func start() {
+	Instance = &Fsd{outgoing: make(chan string, 100000)}
 	Instance.connect()
 
 	go Instance.processOutgoing()
 }
 
 func (fsd *Fsd) connect() error {
-	conn, err := net.Dial("udp", fsd.address)
+	conn, err := net.Dial("udp", *address)
 	if err != nil {
 		return err
 	}
