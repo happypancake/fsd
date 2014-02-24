@@ -33,6 +33,8 @@ func start() {
 }
 
 func (fsd *Fsd) connect() error {
+
+	fmt.Println("FSD connects to", *address)
 	conn, err := net.Dial("udp", *address)
 	if err != nil {
 		return err
