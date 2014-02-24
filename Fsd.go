@@ -28,7 +28,6 @@ func init() {
 
 func start() {
 	Instance = &Fsd{outgoing: make(chan string, 100000)}
-	Instance.connect()
 
 	go Instance.processOutgoing()
 }
@@ -44,7 +43,13 @@ func (fsd *Fsd) connect() error {
 }
 
 func (fsd *Fsd) processOutgoing() {
+
 	for outgoing := range fsd.outgoing {
+
+		if nil == fsd.conn {
+			fsd.connect()
+		}
+
 		if _, err := fsd.conn.Write([]byte(outgoing)); err != nil {
 			fsd.connect()
 		}
