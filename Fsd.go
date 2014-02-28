@@ -18,17 +18,17 @@ var (
 	address string
 
 	addressConfig chan *etcd.Response
-	outgoing      = make(chan string, 100000)
+	outgoing      = make(chan []byte, 100000)
 
 	log = logging.MustGetLogger("fsd")
 
 	conn net.Conn
 )
 
-func InitWithDynamicConfig(client *etcd.Client, key string) {
+func InitWithDynamicConfig(client *etcd.Client) {
 	addressConfig = make(chan *etcd.Response)
 
-	go watchConfiguration(client, key)
+	go watchConfiguration(client, "/statsd/address")
 	go processOutgoing()
 }
 
@@ -65,7 +65,7 @@ func processOutgoing() {
 				break
 			}
 
-			if _, err := conn.Write([]byte(outgoing)); err != nil {
+			if _, err := conn.Write(outgoing); err != nil {
 				connect()
 			}
 		case response := <-addressConfig:
@@ -182,6 +182,6 @@ func send(payload string) {
 	capacity := float64(cap(outgoing))
 
 	if length < capacity*0.9 {
-		outgoing <- payload
+		outgoing <- []byte(payload)
 	}
 }
