@@ -4,58 +4,81 @@ package fsd
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/coreos/go-etcd/etcd"
+	"github.com/op/go-logging"
 )
 
 var (
-	Instance *Fsd
-	address  *string = flag.String("statsd", "127.0.0.1:8125", "UDP endpoint for StatsD daemon")
+	address string
+
+	addressConfig chan *etcd.Response
+	outgoing      = make(chan string, 100000)
+
+	log = logging.MustGetLogger("fsd")
+
+	conn net.Conn
 )
 
-type Fsd struct {
-	outgoing chan string
-	conn     net.Conn
+func InitWithDynamicConfig(client *etcd.Client, key string) {
+	addressConfig = make(chan *etcd.Response)
+
+	go watchConfiguration(client, key)
+	go processOutgoing()
 }
 
-func init() {
-	start()
-}
+func watchConfiguration(client *etcd.Client, key string) {
+	for {
+		if _, err := client.Watch(key, 0, false, addressConfig, nil); err != nil {
+			toSleep := 5 * time.Second
 
-func start() {
-	Instance = &Fsd{outgoing: make(chan string, 100000)}
-
-	go Instance.processOutgoing()
-}
-
-func (fsd *Fsd) connect() error {
-
-	fmt.Println("FSD connects to", *address)
-	conn, err := net.Dial("udp", *address)
-	if err != nil {
-		return err
-	}
-
-	fsd.conn = conn
-	return nil
-}
-
-func (fsd *Fsd) processOutgoing() {
-
-	for outgoing := range fsd.outgoing {
-
-		if nil == fsd.conn {
-			fsd.connect()
-		}
-
-		if _, err := fsd.conn.Write([]byte(outgoing)); err != nil {
-			fsd.connect()
+			log.Debug("error watching etcd for key %v: %v", key, err)
+			log.Debug("retry in %v", toSleep)
+			time.Sleep(toSleep)
 		}
 	}
+}
+
+func connect() (err error) {
+	if address == "" {
+		return
+	}
+
+	log.Debug("fsd connects to %v", address)
+	if conn, err = net.Dial("udp", address); err != nil {
+		return
+	}
+
+	return
+}
+
+func processOutgoing() {
+	for {
+		select {
+		case outgoing := <-outgoing:
+			if !hasAddress() {
+				break
+			}
+
+			if _, err := conn.Write([]byte(outgoing)); err != nil {
+				connect()
+			}
+		case response := <-addressConfig:
+			if response.Node != nil && response.Node.Value != "" {
+				address = response.Node.Value
+				connect()
+			}
+		}
+	}
+}
+
+func hasAddress() bool {
+	return address != ""
 }
 
 // To read about the different semantics check out
@@ -155,10 +178,10 @@ func rateCheck(rate float64, payload string) (string, error) {
 }
 
 func send(payload string) {
-	length := float64(len(Instance.outgoing))
-	capacity := float64(cap(Instance.outgoing))
+	length := float64(len(outgoing))
+	capacity := float64(cap(outgoing))
 
 	if length < capacity*0.9 {
-		Instance.outgoing <- payload
+		outgoing <- payload
 	}
 }
