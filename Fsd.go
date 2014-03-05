@@ -25,10 +25,10 @@ var (
 	conn net.Conn
 )
 
-func InitWithDynamicConfig(client *etcd.Client) {
+func InitWithDynamicConfig(client *etcd.Client, hostname string) {
 	addressConfig = make(chan *etcd.Response)
 
-	go watchConfiguration(client, "/statsd/address")
+	go watchConfiguration(client, fmt.Sprintf("%v/statsd/address", hostname))
 	go processOutgoing()
 }
 
