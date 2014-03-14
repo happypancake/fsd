@@ -112,6 +112,10 @@ func Count(name string, value float64) {
 }
 
 func CountL(name string, value float64, rate float64) {
+	if rand.Float64() > rate {
+		return
+	}
+
 	payload, err := rateCheck(rate, createPayload(name, value, "c"))
 	if err != nil {
 		return
@@ -136,6 +140,10 @@ func Timer(name string, duration time.Duration) {
 }
 
 func TimerL(name string, duration time.Duration, rate float64) {
+	if rand.Float64() > rate {
+		return
+	}
+
 	HistogramL(name, float64(duration.Nanoseconds()/1000000), rate)
 }
 
@@ -144,6 +152,10 @@ func Histogram(name string, value float64) {
 }
 
 func HistogramL(name string, value float64, rate float64) {
+	if rand.Float64() > rate {
+		return
+	}
+
 	payload, err := rateCheck(rate, createPayload(name, value, "ms"))
 	if err != nil {
 		return
@@ -159,6 +171,10 @@ func TimeSince(name string, start time.Time) {
 
 // TimeSince records a rated and named timer with the duration since start
 func TimeSinceL(name string, start time.Time, rate float64) {
+	if rand.Float64() > rate {
+		return
+	}
+
 	TimerL(name, time.Now().Sub(start), rate)
 }
 
@@ -167,9 +183,13 @@ func Time(name string, lambda func()) {
 }
 
 func TimeL(name string, rate float64, lambda func()) {
-	start := time.Now()
-	lambda()
-	TimeSinceL(name, start, rate)
+	if rand.Float64() > rate {
+		lambda()
+	} else {
+		start := time.Now()
+		lambda()
+		TimeSinceL(name, start, rate)
+	}
 }
 
 // Track a unique visitor id to the site.
@@ -187,9 +207,7 @@ func createPayload(name string, value float64, suffix string) string {
 
 func rateCheck(rate float64, payload string) (string, error) {
 	if rate < 1 {
-		if rand.Float64() < rate {
-			return payload + fmt.Sprintf("|@%f", rate), nil
-		}
+		return payload + fmt.Sprintf("|@%f", rate), nil
 	} else { // rate is 1.0 == all samples should be sent
 		return payload, nil
 	}
