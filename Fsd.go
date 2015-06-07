@@ -26,6 +26,18 @@ var (
 	conn net.Conn
 )
 
+func InitWithPrefixAndStaticConfig(metricPrefix, addr string) {
+	prefix = metricPrefix + "."
+	InitWithStaticConfig(addr)
+}
+
+func InitWithStaticConfig(addr string) {
+	address = addr
+	connect()
+
+	go processOutgoing()
+}
+
 func InitWithPrefixAndDynamicConfig(metricPrefix string, client *etcd.Client, hostname string) {
 	prefix = metricPrefix + "."
 	InitWithDynamicConfig(client, hostname)
